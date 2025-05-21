@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+   parameters {
+        booleanParam(defaultValue: false, description: 'Run Git_Infra', name: 'Git_Infra')
+        booleanParam(defaultValue: false, description: 'Run Plan_Infra', name: 'Plan_Infra')
+        booleanParam(defaultValue: false, description: 'Run Deploy_Infra', name: 'Deploy_Infra')
+        booleanParam(defaultValue: false, description: 'Run Destroy_Infra', name: 'Destroy_Infra')
+    }
+
+    stages {
+        stage('Git_Infra') {
+            when {
+                expression{params.Git_Infra ==true}
+            }
+            steps {
+                script{
+                    echo '\n************DELETE OLD FILES-->****************'
+                    cleanWs()
+                    echo '\n************DELETE OLD FILES COMPLETED****************'
+                    echo '\n************CLONING GIT-REPO-->****************'
+                    git branch: 'main', url: 'https://github.com/inboxtoshashi/url_infra.git'
+                    echo '************CLONING COMPLETED****************'
+                    sh "ls -ltr"
+                }
+            }
+        }
+        stage('Plan_Infra') {
+            when {
+                expression{params.Plan_Infra ==true}
+            }
+            steps {
+                    script{
+                         echo '\n************Plan_Infra Triggered****************'
+                         sh '''
+                            cd job
+                            chmod +x plan.sh
+                            ./plan.sh
+                        '''
+                        echo '************Plan_Infra Completed****************'
+                    }
+            }
+        }
+        stage('Deploy_Infra') {
+			when {
+				expression { params.Deploy_Infra == true }
+			}
+			steps {
+				script {
+					echo '\n************Deploy_Infra Triggered****************'
+					sh '''
+						cd job
+						ls -ltr
+						chmod +x apply.sh
+						pwd
+						./apply.sh
+					'''
+					echo '************Deploy_Infra Completed****************'
+				}
+			}
+		}
+
+        stage('Destroy_Infra') {
+            when {
+                expression{params.Destroy_Infra ==true}
+            }
+            steps {
+                script{
+                         echo '\n************Destroy_Infra Triggered****************'
+                         sh '''
+                            cd job
+                            chmod +x destroy.sh
+                            ./destroy.sh
+                        '''
+                        echo '************Destroy_Infra Completed****************'
+                }
+            }
+        }
+    }
+}
