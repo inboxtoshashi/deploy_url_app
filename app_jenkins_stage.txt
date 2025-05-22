@@ -1,0 +1,24 @@
+pipeline {
+    agent any
+    parameters {
+        booleanParam(defaultValue: false, description: 'Run Deploy_App', name: 'Deploy_App')
+    }
+    stages {
+        stage('Deploy_App') {
+            when {
+                expression{params.Deploy_App ==true}
+            }
+            steps {
+                    script{
+                         echo '\n************Deploy_App Triggered****************'
+                         sh '''
+                            cd ssh_url_ec2
+                            chmod +x ssh.sh
+                            ./ssh.sh
+                        '''
+                        echo '************Deploy_App Completed****************'
+                    }
+            }
+        }
+    }
+}
