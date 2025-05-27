@@ -10,7 +10,7 @@ cd docker_requirements
 
 # Run the Docker install script
 echo "🐳 Installing Docker..."
-sudo sh install_docker.sh -y
+sudo sh install_docker -y
 
 # Wait for 1 minute after Docker installation to ensure everything settles
 echo "⏳ Docker installation finished. Waiting for 1 minute..."
