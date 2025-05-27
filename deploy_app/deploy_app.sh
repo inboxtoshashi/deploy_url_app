@@ -5,16 +5,12 @@ git clone https://github.com/inboxtoshashi/urlshortener_docker.git
 cd urlshortener_docker
 
 # Wait for 15 seconds after clone
-echo "✅ Repo cloned. Waiting for 15 seconds..."
-sleep 15
+echo "✅ Repo cloned. Waiting for 5 seconds..."
+sleep 5
 
 # Build Docker containers with no cache
 echo "🔧 Starting Docker build..."
 sudo docker compose -f urlShortner.yml build --no-cache
-
-# Wait for 2 minutes after build
-echo "⏳ Build complete. Waiting for 2 minutes..."
-sleep 120
 
 # Bring up the containers in detached mode
 echo "🚀 Starting containers..."
