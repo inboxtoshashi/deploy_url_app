@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#Give the right permission to pem file
+sudo chmod 400 /var/lib/jenkins/workspace/url-app/ssh_url_ec2/url_app.pem
+sudo chown jenkins:jenkins /var/lib/jenkins/workspace/url-app/ssh_url_ec2/url_app.pem
+
 # Go to Terraform directory (adjust path if needed)
 cd /var/lib/jenkins/workspace/url-infra/
 
