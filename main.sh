@@ -5,44 +5,35 @@ set -o pipefail  # Catch errors in piped commands
 
 # Variables
 SSH_SCRIPT="ssh_url_ec2/ssh.sh"
-INSTALL_SCRIPT="install_requirements/download_docker.sh"
-DEPLOY_SCRIPT="deploy_app/deploy_app.sh"
 
 # Function to log messages with timestamps
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Validate required scripts
-for script in "$SSH_SCRIPT" "$INSTALL_SCRIPT" "$DEPLOY_SCRIPT"; do
-    if [ ! -f "$script" ]; then
-        log "❌ Required script '$script' not found. Exiting."
-        exit 1
-    fi
-done
+log "🚀 Starting URL Shortener App Deployment"
+log "=========================================="
 
-# Step 1: SSH into EC2
-log "🔐 SSHing into EC2..."
+# Validate SSH script exists
+if [ ! -f "$SSH_SCRIPT" ]; then
+    log "❌ Required script '$SSH_SCRIPT' not found. Exiting."
+    exit 1
+fi
+
+# Make SSH script executable
+chmod +x "$SSH_SCRIPT"
+
+# Execute SSH script which will:
+# 1. Get EC2 IP from Terraform output
+# 2. Copy install and deploy scripts to EC2
+# 3. SSH into EC2 and execute the scripts
+log "🔐 Connecting to EC2 and deploying application..."
 bash "$SSH_SCRIPT"
 if [ $? -ne 0 ]; then
-    log "❌ Failed to SSH into EC2. Exiting."
+    log "❌ Deployment failed. Check the logs above for details."
     exit 1
 fi
 
-# Step 2: Install Jenkins & Docker dependencies
-log "⚙️ Installing Jenkins-related configuration..."
-bash "$INSTALL_SCRIPT"
-if [ $? -ne 0 ]; then
-    log "❌ Failed to install Jenkins-related configuration. Exiting."
-    exit 1
-fi
-
-# Step 3: Deploy the URL Shortener App
-log "🚀 Deploying URL Shortener App..."
-bash "$DEPLOY_SCRIPT"
-if [ $? -ne 0 ]; then
-    log "❌ Failed to deploy the URL Shortener App. Exiting."
-    exit 1
-fi
-
+log "=========================================="
 log "✅ All steps completed successfully."
+log "🎉 URL Shortener App is now running on EC2!"
