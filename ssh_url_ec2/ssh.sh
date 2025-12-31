@@ -77,9 +77,11 @@ cd /home/ubuntu
 command -v dos2unix >/dev/null || (sudo apt update && sudo apt install -y dos2unix)
 dos2unix download_docker.sh deploy_app.sh
 
+# Install Docker requirements
 chmod +x download_docker.sh
 ./download_docker.sh
 
+# Deploy the URL Shortener application
 chmod +x deploy_app.sh
 ./deploy_app.sh
 EOF

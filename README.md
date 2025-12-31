@@ -9,6 +9,7 @@ This deployment automation:
 2. Copies deployment scripts to the EC2 instance via SSH
 3. Installs Docker and Docker Compose on the EC2 instance
 4. Clones and deploys the URL Shortener application using Docker containers
+5. Deploys the monitoring stack (Prometheus, Grafana, Node Exporter, Blackbox, cAdvisor)
 
 ## 🏗️ Architecture
 
@@ -19,8 +20,10 @@ deploy_url_app/
 │   └── ssh.sh                       # Handles SSH connection and remote script execution
 ├── install_requirements/
 │   └── download_docker.sh           # Installs Docker on EC2
-└── deploy_app/
-    └── deploy_app.sh                # Deploys the URL Shortener app
+├── deploy_app/
+│   └── deploy_app.sh                # Deploys the URL Shortener app
+└── deploy_monitoring/
+    └── deploy_monitoring.sh         # Deploys monitoring stack (Prometheus, Grafana, etc.)
 ```
 
 ## 🔄 Workflow
@@ -34,7 +37,8 @@ The `deploy-app` Jenkins job will:
 ```
 main.sh → ssh.sh → [EC2 Instance]
                       ├── download_docker.sh (Install Docker)
-                      └── deploy_app.sh (Deploy application)
+                      ├── deploy_app.sh (Deploy application)
+                      └── deploy_monitoring.sh (Deploy monitoring stack)
 ```
 
 ## 📝 Prerequisites
@@ -89,8 +93,8 @@ ENV=prod ./main.sh
   - Valid SSH key
 - **What it does**:
   1. Retrieves EC2 public IP from Terraform outputs
-  2. Copies `download_docker.sh` and `deploy_app.sh` to EC2
-  3. SSH into EC2 and executes both scripts remotely
+  2. Copies `download_docker.sh`, `deploy_app.sh`, and `deploy_monitoring.sh` to EC2
+  3. SSH into EC2 and executes all scripts remotely
   4. Handles line ending conversion (dos2unix)
 
 ### install_requirements/download_docker.sh
@@ -112,6 +116,43 @@ ENV=prod ./main.sh
   - Builds Docker images with no cache
   - Starts containers in detached mode
   - Verifies container health
+
+### deploy_monitoring/deploy_monitoring.sh
+- **Purpose**: Deploys the monitoring stack
+- **Repository**: Clones from `inboxtoshashi/monitoring_stack`
+- **Components**:
+  - Prometheus (metrics collection) - Port 9091
+  - Grafana (visualization) - Port 3000
+  - Node Exporter (system metrics) - Port 9100
+  - Blackbox Exporter (endpoint health) - Port 9115
+  - cAdvisor (container metrics) - Port 8080
+- **What it does**:
+  - Clones/updates the monitoring stack repository
+  - Creates/verifies Docker network 'monitoring'
+  - Pulls latest monitoring images
+  - Starts all monitoring containers
+  - Verifies monitoring services are running
+
+## 📊 Monitoring
+
+After deployment, you can access the monitoring dashboards:
+
+- **Grafana**: `http://<EC2_IP>:3000`
+  - Username: `admin`
+  - Password: `admin`
+  - Pre-configured dashboards for URL Shortener metrics
+
+- **Prometheus**: `http://<EC2_IP>:9091`
+  - Direct access to metrics and queries
+
+- **cAdvisor**: `http://<EC2_IP>:8080`
+  - Container resource usage and performance
+
+The monitoring stack automatically scrapes metrics from:
+- URL Shortener backend (application metrics)
+- Node Exporter (system metrics)
+- Blackbox Exporter (HTTP endpoint health checks)
+- cAdvisor (Docker container metrics)
 
 ## 🔧 Configuration
 
@@ -175,14 +216,20 @@ DOCKER_COMPOSE_FILE="urlShortner.yml"
 ### Viewing Logs
 On EC2 instance:
 ```bash
-# View running containers
+# View running containers (app + monitoring)
 docker ps
 
-# View container logs
+# View application container logs
 docker compose -f urlshortener_docker/urlShortner.yml logs
+
+# View monitoring container logs
+docker compose -f monitoring_stack/monitoring.yml logs
 
 # View specific container logs
 docker logs <container_name>
+
+# View Prometheus targets
+# Access http://<EC2_IP>:9091/targets to see scraping status
 ```
 
 ## 🔐 Security Considerations
@@ -198,6 +245,7 @@ docker logs <container_name>
 - **dvm-setup**: Jenkins Docker setup and job configurations
 - **docker_requirements**: Docker installation scripts
 - **urlshortener_docker**: URL Shortener application with Docker Compose
+- **monitoring_stack**: Prometheus, Grafana, and monitoring tools configuration
 
 ## 📞 Support
 
@@ -213,5 +261,9 @@ Deployment is successful when:
 - ✅ SSH connection to EC2 established
 - ✅ Docker and Docker Compose installed
 - ✅ Application containers built without errors
-- ✅ All containers running in healthy state
+- ✅ All application containers running in healthy state
+- ✅ Monitoring stack deployed successfully
+- ✅ All monitoring containers running
 - ✅ Application accessible on expected ports
+- ✅ Grafana dashboards accessible with pre-configured metrics
+- ✅ Prometheus successfully scraping all targets
