@@ -73,11 +73,34 @@ if [ ! -d "$TERRAFORM_DIR" ]; then
 fi
 cd "$TERRAFORM_DIR" || { log "❌ Failed to change directory to $TERRAFORM_DIR."; exit 1; }
 
-# Get the EC2 public IP
-log "🔍 Retrieving EC2 public IP from Terraform output..."
-EC2_IP=$("${TERRAFORM_BIN}" output -raw public_ip 2>/dev/null)
+# Determine centralized state file location
+if [[ "$OS" == "Darwin" ]]; then
+  STATE_FILE="$HOME/.jenkins/workspace/terraform-states/${ENVIRONMENT}/terraform.tfstate"
+else
+  STATE_FILE="/var/lib/jenkins/workspace/terraform-states/${ENVIRONMENT}/terraform.tfstate"
+fi
+
+# Get the EC2 public IP from centralized state
+log "🔍 Retrieving EC2 public IP from Terraform state..."
+log "State file: ${STATE_FILE}"
+
+if [ ! -f "$STATE_FILE" ]; then
+    log "❌ State file not found at ${STATE_FILE}"
+    exit 1
+fi
+
+# Extract public_ip from state file using terraform output
+cd "$TERRAFORM_DIR" || { log "❌ Failed to change directory to $TERRAFORM_DIR."; exit 1; }
+EC2_IP=$("${TERRAFORM_BIN}" output -state="${STATE_FILE}" -raw public_ip 2>/dev/null)
+
+# If terraform output fails, try parsing state JSON directly
 if [ $? -ne 0 ] || [ -z "$EC2_IP" ]; then
-    log "❌ Failed to retrieve EC2 public IP. Make sure Terraform has been applied."
+    log "⚠️  terraform output failed, parsing state file directly..."
+    EC2_IP=$(grep -o '"public_ip":[^,}]*' "${STATE_FILE}" | grep -o '[0-9.]*' | head -1)
+fi
+
+if [ -z "$EC2_IP" ]; then
+    log "❌ Failed to retrieve EC2 public IP from state file."
     exit 1
 fi
 log "✅ EC2 Public IP is $EC2_IP"
