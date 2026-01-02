@@ -100,7 +100,7 @@ if [ ! -d "$CLONE_DIR" ]; then
 else
     log "ℹ️  Repository already exists. Pulling latest changes..."
     cd "$CLONE_DIR" || { log "❌ Failed to change directory to $CLONE_DIR."; exit 1; }
-    git pull origin master || log "⚠️  Could not pull latest changes, using existing code."
+    git pull origin main || log "⚠️  Could not pull latest changes, using existing code."
     cd ..
 fi
 
