@@ -74,18 +74,19 @@ if [ $? -ne 0 ]; then
 fi
 log "✅ Docker build completed successfully."
 
-# Bring up the containers in detached mode
+# Bring up the containers in detached mode with health check wait
 log "🚀 Starting containers in detached mode..."
-$DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" up -d
+$DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" up -d --wait
 if [ $? -ne 0 ]; then
-    log "❌ Failed to start containers."
+    log "❌ Failed to start containers. Showing logs..."
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" logs --tail=50
     exit 1
 fi
 log "✅ Containers started successfully."
 
-# Wait for services to stabilize
-log "⌛ Waiting 10 seconds for services to stabilize..."
-sleep 10
+# Wait additional time for services to fully stabilize
+log "⌛ Waiting 15 seconds for services to fully stabilize..."
+sleep 15
 
 # Show running containers
 log "📊 Verifying running containers..."
@@ -93,14 +94,20 @@ $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps
 
 # Check container health
 log "🏥 Checking container health..."
+HEALTHY_CONTAINERS=$($DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps --format json | grep -c '"Health":"healthy"' || echo 0)
 RUNNING_CONTAINERS=$($DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps --services --filter "status=running" | wc -l)
 TOTAL_CONTAINERS=$($DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps --services | wc -l)
+
+log "ℹ️  Healthy: $HEALTHY_CONTAINERS | Running: $RUNNING_CONTAINERS | Total: $TOTAL_CONTAINERS"
 
 if [ "$RUNNING_CONTAINERS" -eq "$TOTAL_CONTAINERS" ]; then
     log "✅ All containers are running successfully!"
 else
     log "⚠️  Warning: Some containers may not be running properly."
-    log "ℹ️  Running: $RUNNING_CONTAINERS/$TOTAL_CONTAINERS"
+    log "📋 Container status:"
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps
+    log "📜 Recent logs:"
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" logs --tail=30
 fi
 
 log "=========================================="
