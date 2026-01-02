@@ -96,7 +96,7 @@ log "📂 Working directory: $PROJECT_ROOT"
 log "🔧 Copying scripts to EC2..."
 scp -i "$SSH_KEY" \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    install_requirements/download_docker.sh \
+    install_requirements/setup_docker.sh \
     deploy_app/deploy_app.sh \
     "$REMOTE_USER@$EC2_IP:$REMOTE_DIR/"
 if [ $? -ne 0 ]; then
@@ -113,11 +113,11 @@ cd /home/ubuntu
 
 # Ensure correct line endings
 command -v dos2unix >/dev/null || (sudo apt update && sudo apt install -y dos2unix)
-dos2unix download_docker.sh deploy_app.sh
+dos2unix setup_docker.sh deploy_app.sh
 
 # Install Docker requirements
-chmod +x download_docker.sh
-./download_docker.sh
+chmod +x setup_docker.sh
+./setup_docker.sh
 
 # Deploy the URL Shortener application
 chmod +x deploy_app.sh

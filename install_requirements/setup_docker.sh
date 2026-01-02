@@ -3,9 +3,8 @@
 set -e  # Exit if any command fails
 
 # Variables
-REPO_URL="https://github.com/inboxtoshashi/docker_requirements.git"
-INSTALL_SCRIPT="install_docker"
-CLONE_DIR="docker_requirements"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+INSTALL_SCRIPT="$SCRIPT_DIR/docker_requirements/install_docker.sh"
 
 # Function to log messages with timestamps
 log() {
@@ -40,14 +39,29 @@ fi
 
 log "🔧 Docker not found. Installing Docker..."
 
-# Clone the repository if it doesn't already exist
-if [ ! -d "$CLONE_DIR" ]; then
-    log "📥 Cloning docker_requirements repository..."
-    git clone "$REPO_URL" "$CLONE_DIR"
-    if [ $? -ne 0 ]; then
-        log "❌ Failed to clone repository."
-        exit 1
-    fi
+# Check if install script exists
+if [ ! -f "$INSTALL_SCRIPT" ]; then
+    log "❌ Installation script not found at: $INSTALL_SCRIPT"
+    exit 1
+fi
+
+# Make install script executable
+chmod +x "$INSTALL_SCRIPT"
+
+# Run the installation script
+log "🚀 Running Docker installation script..."
+"$INSTALL_SCRIPT"
+
+if [ $? -eq 0 ]; then
+    log "✅ Docker installation completed successfully!"
+    docker --version
+else
+    log "❌ Docker installation failed."
+    exit 1
+fi
+
+log "=========================================="
+log "✅ All steps completed."
     log "✅ Repository cloned."
 else
     log "ℹ️  Repository already exists. Using existing clone."
