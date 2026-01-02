@@ -4,25 +4,8 @@
 # Environment can be passed as ENV variable (dev or prod), defaults to dev
 ENVIRONMENT="${ENV:-dev}"
 
-# Detect platform and set Jenkins workspace path
+# Detect platform for state file path
 OS="$(uname -s)"
-if [[ "$OS" == "Darwin" ]]; then
-  # macOS
-  JENKINS_WORKSPACE="$HOME/.jenkins/workspace"
-elif [[ "$OS" == "Linux" ]]; then
-  # Linux/Ubuntu
-  JENKINS_WORKSPACE="/var/lib/jenkins/workspace"
-else
-  # Fallback - try to detect from environment or use current directory approach
-  JENKINS_WORKSPACE="${JENKINS_HOME:-$HOME/.jenkins}/workspace"
-fi
-
-# Use TERRAFORM_WORKSPACE if provided (from Jenkins), otherwise construct path
-if [ -n "$TERRAFORM_WORKSPACE" ]; then
-  TERRAFORM_DIR="$TERRAFORM_WORKSPACE/url_infra/labs/${ENVIRONMENT}"
-else
-  TERRAFORM_DIR="${JENKINS_WORKSPACE}/url_infra/labs/${ENVIRONMENT}"
-fi
 
 # SSH key path can be configured via SSH_KEY_PATH env variable
 SSH_KEY="${SSH_KEY_PATH:-$HOME/.ssh/url_app.pem}"
@@ -38,7 +21,6 @@ log() {
 }
 
 log "🌍 Environment: ${ENVIRONMENT}"
-log "📁 Terraform Directory: ${TERRAFORM_DIR}"
 
 # Find terraform binary
 TERRAFORM_BIN=$(which terraform 2>/dev/null)
@@ -66,13 +48,6 @@ for cmd in scp ssh; do
     fi
 done
 
-# Go to Terraform directory
-if [ ! -d "$TERRAFORM_DIR" ]; then
-    log "❌ Terraform directory '$TERRAFORM_DIR' not found."
-    exit 1
-fi
-cd "$TERRAFORM_DIR" || { log "❌ Failed to change directory to $TERRAFORM_DIR."; exit 1; }
-
 # Determine centralized state file location
 if [[ "$OS" == "Darwin" ]]; then
   STATE_FILE="$HOME/.jenkins/workspace/terraform-states/${ENVIRONMENT}/terraform.tfstate"
@@ -86,11 +61,11 @@ log "State file: ${STATE_FILE}"
 
 if [ ! -f "$STATE_FILE" ]; then
     log "❌ State file not found at ${STATE_FILE}"
+    log "💡 Please run Deploy-Infra job first to create infrastructure"
     exit 1
 fi
 
-# Extract public_ip from state file using terraform output
-cd "$TERRAFORM_DIR" || { log "❌ Failed to change directory to $TERRAFORM_DIR."; exit 1; }
+# Extract public_ip from state file using terraform output (no need to cd to terraform dir)
 EC2_IP=$("${TERRAFORM_BIN}" output -state="${STATE_FILE}" -raw public_ip 2>/dev/null)
 
 # If terraform output fails, try parsing state JSON directly
