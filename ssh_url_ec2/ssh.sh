@@ -3,7 +3,27 @@
 # Variables
 # Environment can be passed as ENV variable (dev or prod), defaults to dev
 ENVIRONMENT="${ENV:-dev}"
-TERRAFORM_DIR="/var/lib/jenkins/workspace/url-infra/labs/${ENVIRONMENT}"
+
+# Detect platform and set Jenkins workspace path
+OS="$(uname -s)"
+if [[ "$OS" == "Darwin" ]]; then
+  # macOS
+  JENKINS_WORKSPACE="$HOME/.jenkins/workspace"
+elif [[ "$OS" == "Linux" ]]; then
+  # Linux/Ubuntu
+  JENKINS_WORKSPACE="/var/lib/jenkins/workspace"
+else
+  # Fallback - try to detect from environment or use current directory approach
+  JENKINS_WORKSPACE="${JENKINS_HOME:-$HOME/.jenkins}/workspace"
+fi
+
+# Use TERRAFORM_WORKSPACE if provided (from Jenkins), otherwise construct path
+if [ -n "$TERRAFORM_WORKSPACE" ]; then
+  TERRAFORM_DIR="$TERRAFORM_WORKSPACE/url_infra/labs/${ENVIRONMENT}"
+else
+  TERRAFORM_DIR="${JENKINS_WORKSPACE}/url_infra/labs/${ENVIRONMENT}"
+fi
+
 # SSH key path can be configured via SSH_KEY_PATH env variable
 SSH_KEY="${SSH_KEY_PATH:-$HOME/.ssh/url_app.pem}"
 REMOTE_USER="ubuntu"
@@ -20,8 +40,26 @@ log() {
 log "🌍 Environment: ${ENVIRONMENT}"
 log "📁 Terraform Directory: ${TERRAFORM_DIR}"
 
+# Find terraform binary
+TERRAFORM_BIN=$(which terraform 2>/dev/null)
+if [ -z "$TERRAFORM_BIN" ]; then
+    # Check common locations (Linux first, then macOS)
+    for path in /usr/local/bin/terraform /usr/bin/terraform /opt/homebrew/bin/terraform; do
+        if [ -f "$path" ]; then
+            TERRAFORM_BIN="$path"
+            break
+        fi
+    done
+fi
+
 # Validate required commands
-for cmd in terraform scp ssh; do
+if [ -z "$TERRAFORM_BIN" ] || [ ! -f "$TERRAFORM_BIN" ]; then
+    log "❌ Command 'terraform' is not installed or not found. Please install it and try again."
+    exit 1
+fi
+log "✅ Using Terraform at: ${TERRAFORM_BIN}"
+
+for cmd in scp ssh; do
     if ! command -v $cmd &> /dev/null; then
         log "❌ Command '$cmd' is not installed. Please install it and try again."
         exit 1
@@ -37,7 +75,7 @@ cd "$TERRAFORM_DIR" || { log "❌ Failed to change directory to $TERRAFORM_DIR."
 
 # Get the EC2 public IP
 log "🔍 Retrieving EC2 public IP from Terraform output..."
-EC2_IP=$(terraform output -raw public_ip 2>/dev/null)
+EC2_IP=$("${TERRAFORM_BIN}" output -raw public_ip 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "$EC2_IP" ]; then
     log "❌ Failed to retrieve EC2 public IP. Make sure Terraform has been applied."
     exit 1
