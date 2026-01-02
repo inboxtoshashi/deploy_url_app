@@ -1,46 +1,68 @@
 #!/bin/bash
-set -e
-echo "[+] Updating package index..."
-sudo apt-get update
-echo "[+] Installing required packages..."
-sudo apt-get install -y ca-certificates curl gnupg lsb-release
-echo "[+] Adding Docker GPG key..."
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/docker.gpg 2>/dev/null || \
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.gpg.asc > /dev/null
-sudo chmod a+r /etc/apt/keyrings/docker.gpg 2>/dev/null || sudo chmod a+r /etc/apt/keyrings/docker.gpg.asc 2>/dev/null
-echo "[+] Setting up Docker repository..."
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
+# Cross-platform Docker installation script
+# Supports: Ubuntu/Debian (EC2) and macOS
 
-echo "[+] Installing Docker Engine..."
-# Try installing all packages together first
-if sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>&1 | tee /tmp/docker-install.log; then
-    echo "[✔] All Docker packages installed successfully"
-else
-    echo "[!] Installation encountered errors, trying alternative approach..."
-    
-    # Install core Docker packages without containerd.io if it's the problem
-    if grep -q "containerd.io" /tmp/docker-install.log && grep -q "404" /tmp/docker-install.log; then
-        echo "[!] containerd.io version not found, installing Docker without it..."
-        sudo apt-get install -y docker-ce docker-ce-cli docker-buildx-plugin docker-compose-plugin || {
-            echo "[!] Retrying with --fix-missing..."
-            sudo apt-get update --fix-missing
-            sudo apt-get install -y docker-ce docker-ce-cli docker-buildx-plugin docker-compose-plugin
-        }
-        
-        # Try to install any available version of containerd.io
-        echo "[!] Attempting to install any available containerd.io version..."
-        sudo apt-get install -y containerd.io || echo "[!] Skipping containerd.io, Docker should still work"
-    else
-        echo "[!] Retrying with --fix-missing..."
-        sudo apt-get update --fix-missing
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# Detect OS
+OS="$(uname -s)"
+echo "[ℹ️] Detected OS: $OS"
+
+if [[ "$OS" == "Linux" ]]; then
+    # Ubuntu/Debian installation
+    echo "[+] Updating package index..."
+    sudo apt-get update
+
+    echo "[+] Installing Docker from Ubuntu repositories..."
+    sudo apt-get install -y docker.io docker-compose
+
+    # Verify installation
+    if ! command -v docker &> /dev/null; then
+        echo "[✗] Docker installation failed"
+        exit 1
     fi
-fi
 
-sudo systemctl enable docker
-sudo systemctl start docker
-sudo usermod -aG docker "$USER"
-echo "[✔] Docker installation complete!"
-docker --version
+    echo "[+] Starting and enabling Docker service..."
+    sudo systemctl enable docker
+    sudo systemctl start docker
+
+    echo "[+] Adding current user to docker group..."
+    sudo usermod -aG docker "$USER"
+
+    echo "[✔] Docker installation complete!"
+    docker --version
+    echo "[ℹ️] Note: You may need to log out and back in for group changes to take effect"
+
+elif [[ "$OS" == "Darwin" ]]; then
+    # macOS installation
+    echo "[+] Installing Docker Desktop for macOS..."
+    
+    # Check if Homebrew is installed
+    if ! command -v brew &> /dev/null; then
+        echo "[✗] Homebrew not found. Please install Homebrew first:"
+        echo "    /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        exit 1
+    fi
+
+    # Install Docker Desktop via Homebrew Cask
+    if brew list --cask docker &> /dev/null; then
+        echo "[ℹ️] Docker Desktop already installed"
+    else
+        echo "[+] Installing Docker Desktop..."
+        brew install --cask docker
+    fi
+
+    # Verify installation
+    if ! command -v docker &> /dev/null; then
+        echo "[⚠️] Docker command not found. Please start Docker Desktop application manually."
+        echo "    Applications -> Docker.app"
+        exit 1
+    fi
+
+    echo "[✔] Docker installation complete!"
+    docker --version
+    echo "[ℹ️] Make sure Docker Desktop app is running"
+
+else
+    echo "[✗] Unsupported operating system: $OS"
+    echo "    This script supports Linux (Ubuntu/Debian) and macOS (Darwin)"
+    exit 1
+fi
