@@ -92,7 +92,7 @@ fi
 cd "$PROJECT_ROOT" || { log "❌ Failed to change directory to $PROJECT_ROOT."; exit 1; }
 log "📂 Working directory: $PROJECT_ROOT"
 
-# Copy scripts to EC2
+# Copy scripts and docker requirements to EC2
 log "🔧 Copying scripts to EC2..."
 scp -i "$SSH_KEY" \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
@@ -101,6 +101,17 @@ scp -i "$SSH_KEY" \
     "$REMOTE_USER@$EC2_IP:$REMOTE_DIR/"
 if [ $? -ne 0 ]; then
     log "❌ Failed to copy scripts to EC2."
+    exit 1
+fi
+
+# Copy docker_requirements directory recursively
+log "🔧 Copying docker_requirements directory to EC2..."
+scp -i "$SSH_KEY" -r \
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    install_requirements/docker_requirements \
+    "$REMOTE_USER@$EC2_IP:$REMOTE_DIR/"
+if [ $? -ne 0 ]; then
+    log "❌ Failed to copy docker_requirements directory to EC2."
     exit 1
 fi
 
