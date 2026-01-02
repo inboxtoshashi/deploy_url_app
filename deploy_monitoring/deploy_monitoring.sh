@@ -89,6 +89,10 @@ fi
 log "🛑 Stopping existing monitoring containers (if any)..."
 $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" down || log "ℹ️  No existing monitoring containers to stop."
 
+# Force remove any stale containers using monitoring ports
+log "🧹 Cleaning up any stale containers on monitoring ports..."
+docker ps -a --filter "publish=9100" --filter "publish=9091" --filter "publish=3000" --filter "publish=9115" --filter "publish=8080" -q | xargs -r docker rm -f 2>/dev/null || true
+
 # Pull latest images
 log "📥 Pulling latest Docker images..."
 $DOCKER_COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" pull
