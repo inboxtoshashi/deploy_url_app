@@ -26,11 +26,14 @@ if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/
     exit 1
 fi
 
-# Determine which docker compose command to use
-if docker compose version &> /dev/null; then
-    DOCKER_COMPOSE_CMD="docker compose"
+# Determine which docker compose command to use (with sudo since user may not be in docker group yet)
+if docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="sudo docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="sudo docker-compose"
 else
-    DOCKER_COMPOSE_CMD="docker-compose"
+    log "❌ Docker Compose not found"
+    exit 1
 fi
 log "ℹ️  Using: $DOCKER_COMPOSE_CMD"
 

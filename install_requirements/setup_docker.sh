@@ -55,54 +55,10 @@ log "🚀 Running Docker installation script..."
 if [ $? -eq 0 ]; then
     log "✅ Docker installation completed successfully!"
     docker --version
+    log "=========================================="
+    log "✅ All steps completed."
+    log "ℹ️  Note: You may need to log out and back in for docker group changes to take effect."
 else
     log "❌ Docker installation failed."
     exit 1
 fi
-
-log "=========================================="
-log "✅ All steps completed."
-    log "✅ Repository cloned."
-else
-    log "ℹ️  Repository already exists. Using existing clone."
-fi
-
-cd "$CLONE_DIR" || { log "❌ Failed to change directory to $CLONE_DIR."; exit 1; }
-
-# Check if install script exists
-if [ ! -f "$INSTALL_SCRIPT" ]; then
-    log "❌ Install script '$INSTALL_SCRIPT' not found in repository."
-    exit 1
-fi
-
-# Make install script executable
-chmod +x "$INSTALL_SCRIPT"
-
-# Run the Docker install script
-log "⚙️  Running Docker installation script..."
-sudo sh "$INSTALL_SCRIPT" -y
-if [ $? -ne 0 ]; then
-    log "❌ Docker installation failed."
-    exit 1
-fi
-
-# Start Docker service
-log "🚀 Starting Docker service..."
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Add current user to docker group
-log "🔧 Adding current user to docker group..."
-sudo usermod -aG docker $USER
-
-# Verify installation
-if command -v docker &> /dev/null; then
-    DOCKER_VERSION=$(docker --version)
-    log "✅ Docker installed successfully: $DOCKER_VERSION"
-else
-    log "❌ Docker installation verification failed."
-    exit 1
-fi
-
-log "✅ Docker environment setup complete."
-log "ℹ️  Note: You may need to log out and back in for docker group changes to take effect."
