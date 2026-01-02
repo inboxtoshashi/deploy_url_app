@@ -14,7 +14,7 @@ log() {
 log "🐳 Starting Docker installation process..."
 
 # Check if Docker is already installed
-if command -v docker &> /dev/null; then
+if command -v docker >/dev/null 2>&1; then
     DOCKER_VERSION=$(docker --version)
     log "ℹ️  Docker is already installed: $DOCKER_VERSION"
     

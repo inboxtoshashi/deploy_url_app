@@ -42,14 +42,14 @@ fi
 log "✅ Using Terraform at: ${TERRAFORM_BIN}"
 
 for cmd in scp ssh; do
-    if ! command -v $cmd &> /dev/null; then
+    if ! command -v $cmd >/dev/null 2>&1; then
         log "❌ Command '$cmd' is not installed. Please install it and try again."
         exit 1
     fi
 done
 
 # Determine centralized state file location
-if [[ "$OS" == "Darwin" ]]; then
+if [ "$OS" = "Darwin" ]; then
   STATE_FILE="$HOME/.jenkins/workspace/terraform-states/${ENVIRONMENT}/terraform.tfstate"
 else
   STATE_FILE="/var/lib/jenkins/workspace/terraform-states/${ENVIRONMENT}/terraform.tfstate"
